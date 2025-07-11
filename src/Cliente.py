@@ -1,37 +1,44 @@
 #!/usr/bin/env python3
 
+'''Diogo Pereira & June Pinto
+11/07/25'''
+
 import socket
 import sys
 from tftp import *
 
-# Constantes
-SERVER_PORT = 6969  # Porta do servidor TFTP
-BUFFER_SIZE = 1024  # Tamanho do pacote recebidos em bytes, vi que recomendam 1024 bytes
-TIMEOUT = 60        # Tempo máximo de espera (em segundos)
+'''Constantes'''
+'''Porta do servidor TFTP'''
+SERVER_PORT = 6969
+'''Tamanho do pacote recebidos em bytes, vi que recomendam 1024 bytes'''
+BUFFER_SIZE = 1024
+'''Tempo máximo de espera (em segundos)'''
+TIMEOUT = 60
 
 def GET_Arquivo(ip, nome_arquivo):
-    # Função para baixar arquivo (GET)
+    '''Função para baixar arquivo (GET)'''
     print("Fazendo download do servidor")
 
-    # Cria socket UDP
+    '''Cria socket UDP'''
     soquete = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soquete.settimeout(TIMEOUT)  # Define timeout
 
-    # Envia pedido de leitura (RRQ)
+    '''Envia pedido de leitura (RRQ)'''
     pacote_ReadRequest = pack_rrq(nome_arquivo)
     soquete.sendto(pacote_ReadRequest, (ip, SERVER_PORT))
     print("Pedido de leitura enviado")
 
-    # Abre arquivo para escrever os dados em binário
+    '''Abre arquivo para escrever os dados em binário'''
     arquivo = open(nome_arquivo, 'wb')
-    numero_bloco = 1  # Para começar a escrever dados, têm de começar no bloco 1
+    '''Para começar a escrever dados, têm de começar no bloco 1'''
+    numero_bloco = 1
 
     while True:
-        # Recebe pacote do servidor
+        '''Recebe pacote do servidor'''
         dados, endereco = soquete.recvfrom(BUFFER_SIZE)
         codigo = unpack_opcode(dados)
 
-        # Se for pacote de dados (DAT)
+        '''Se for pacote de dados (DAT)'''
         if codigo == DAT:
             bloco, conteudo = unpack_dat(dados)
             if bloco == numero_bloco:           #Verifica se o número do bloco é o esperado.
@@ -46,30 +53,30 @@ def GET_Arquivo(ip, nome_arquivo):
                 print("Não faz sentido o bloco, devia começar no 1")
                 break
 
-        # Se for erro (ERR)
+        '''Se for erro (ERR)'''
         if codigo == ERR:
             print("Erro do servidor")
             break
 
-    # Fecha tudo
+    '''Fecha tudo'''
     arquivo.close()
     soquete.close()
     print("Download terminado (ou deu erro).")
 
 def PUTT_arquivo(ip, nome_arquivo):
-    # Função para enviar arquivo (PUT)
+    '''Função para enviar arquivo (PUT)'''
     print(f"Vou tentar enviar {nome_arquivo} para o servidor {ip}:{SERVER_PORT}")
 
-    # Cria socket UDP
+    '''Cria socket UDP'''
     soquete = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     soquete.settimeout(TIMEOUT)
 
-    # Envia pedido de escrita (WRQ)
+    '''Envia pedido de escrita (WRQ)'''
     pacote_WriteRequest = pack_wrq(nome_arquivo)
     soquete.sendto(pacote_WriteRequest, (ip, SERVER_PORT))
     print("Enviei o pedido de escrita")
 
-    # Recebe resposta do servidor
+    '''Recebe resposta do servidor'''
     dados, endereco = soquete.recvfrom(BUFFER_SIZE)
     codigo = unpack_opcode(dados)
 
@@ -86,17 +93,17 @@ def PUTT_arquivo(ip, nome_arquivo):
 
     print("ACK recebido, começando a enviar blocos!")
 
-    # Abre arquivo para leitura
+    '''Abre arquivo para leitura'''
     arquivo = open(nome_arquivo, 'rb')
     numero_bloco = 1
 
     while True:
-        # Lê até 512 bytes do arquivo
+        '''Lê até 512 bytes do arquivo'''
         conteudo = arquivo.read(MAX_DATA_LEN)
         pacote_dat = pack_dat(numero_bloco, conteudo)   #Cria um pacote para enviar ao servidor
         soquete.sendto(pacote_dat, endereco)            #Envia od dados para o servidor (endereço)
 
-        # Recebe ACK do servidor
+        '''Recebe ACK do servidor'''
         dados, endereco = soquete.recvfrom(BUFFER_SIZE)
         codigo = unpack_opcode(dados)
 
@@ -112,7 +119,7 @@ def PUTT_arquivo(ip, nome_arquivo):
             print("Erro do servidor")
             break
 
-    # Fecha tudo
+    '''Fecha tudo'''
     arquivo.close()
     soquete.close()
     print("Upload terminado (ou deu erro).")
@@ -128,8 +135,8 @@ def Cliente_Interactivo():
         if not comando:
             print("Digite um comando qualquer")
             continue
-
-        partes = comando.split()    #Separa o comando com espaços(ex.: "get 192.168.1.1 arquivo.txt") para o programa analisar
+        '''Separa o comando com espaços(ex.: "get 192.168.1.1 arquivo.txt") para o programa analisar'''
+        partes = comando.split() 
         if partes[0] == "get":
             ip = partes[1]
             arquivo = partes[2]
@@ -145,7 +152,8 @@ def Cliente_Interactivo():
             break
 
 def Cliente_Nao_Interativo():
-    comando, ip, arquivo = sys.argv[1], sys.argv[2], sys.argv[3]        #Fazemos uma lista para ler os inputs
+    '''Fazemos uma lista para ler os inputs'''
+    comando, ip, arquivo = sys.argv[1], sys.argv[2], sys.argv[3]        
     if comando == "get":
         GET_Arquivo(ip, arquivo)
     elif comando == "put":
@@ -156,7 +164,8 @@ def Cliente_Nao_Interativo():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 4:   #Se o script for chamado com 4 argumentos (como scrip + put/get + IP + nome do arquivo), ele entra no modo não interativo
+    """Se o script for chamado com 4 argumentos (como scrip + put/get + IP + nome do arquivo), ele entra no modo não interativo"""
+    if len(sys.argv) == 4:
         Cliente_Nao_Interativo()
     else:                    #Caso contrário, entra no modo interativo
         Cliente_Interactivo()
